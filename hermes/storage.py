@@ -18,12 +18,12 @@ class TimescaleDB(StorageBackend):
         self._conn = await AsyncConnection.connect(self._conn_str)
 
     async def insert_activity(self, activity_data_points: pl.DataFrame) -> None:
-        async with await AsyncConnection.connect(self.conn_str) as conn:
+        async with await AsyncConnection.connect(self._conn_str) as conn:
             async with conn.cursor() as cur:
                 await cur.execute()
 
     async def get_activity(self, activity_id: int) -> pl.DataFrame:
-        async with await AsyncConnection.connect(self.conn_str) as conn:
+        async with await AsyncConnection.connect(self._conn_str) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT * FROM X WHERE activity_id=%s", (activity_id,))
 
