@@ -1,21 +1,31 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
-from sqlalchemy import Enum
-
 from enum import StrEnum, auto
+
+from pydantic import BaseModel
+
 
 
 class ActivityType(StrEnum):
     RUNNING = auto()
     CYCLING = auto()
     ELLIPTICAL = auto()
+    WORKOUT = auto()
 
+def strava_activity_type(activity_type: str) -> ActivityType:
+    match activity_type.lower():
+        case "elliptical":
+            return ActivityType.ELLIPTICAL
+        case "ride":
+            return ActivityType.CYCLING
+        case "run":
+            return ActivityType.RUNNING
+        case "virtualride":
+            return ActivityType.CYCLING
+        case "virtualrun":
+            return ActivityType.RUNNING
+        case "workout":
+            return ActivityType.WORKOUT
 
 class Sex(StrEnum):
     MALE = auto()
@@ -23,17 +33,13 @@ class Sex(StrEnum):
     OTHER = auto()
 
 
-class Base(DeclarativeBase):
-    pass
 
-
-class User(Base):
-    __tablename__ = "user"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(30))
-    city: Mapped[str] = mapped_column(String(30))
-    country: Mapped[str] = mapped_column(String(30))
-    sex: Mapped[Enum[Sex]]
+class User(BaseModel):
+    id: str
+    username: str
+    city: str
+    country: str
+    sex: Sex
 
     def __repr__(self):
         return f"""
@@ -46,15 +52,14 @@ class User(Base):
         """
 
 
-class ActivityMetadata(Base):
-    __tablename__ = "activity_metadata"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(30))
-    distance: Mapped[float]
-    moving_time: Mapped[float]
-    elapsed_time: Mapped[float]
-    type: Mapped[Enum[ActivityType]]
-    start_date: Mapped[datetime]
+class ActivityMetadata(BaseModel):
+    id: int
+    name: str
+    distance: float
+    moving_time: time
+    elapsed_time: time
+    type: ActivityType
+    start_date: datetime
 
     def __repr__(self) -> str:
         return f"""
@@ -67,19 +72,3 @@ class ActivityMetadata(Base):
                 type={self.type!r},
                 start_date={self.start_date!r})
         """
-
-
-class ActivityDataPoint(Base):
-    __tablename__ = "activity_data_point"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    timestamp: Mapped[int]
-    latitude: Mapped[float]
-    longitude: Mapped[float]
-    elevation: Mapped[float]
-    heart_rate: Mapped[Optional[float]]
-
-    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
-    user: Mapped["User"] = relationship(back_populates="addresses")
-
-    def __repr__(self):
-        pass
