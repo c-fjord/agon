@@ -4,6 +4,7 @@ CREATE TABLE activities (
     moving_time INTEGER,
     elapsed_time INTEGER,
     activity_type TEXT,
+    distance FLOAT8,
     start_date TIMESTAMPTZ NOT NULL
 );
 

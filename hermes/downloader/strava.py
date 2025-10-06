@@ -107,7 +107,7 @@ class StravaDownloader:
     #     response.raise_for_status()            
     #     return response.content
 
-    async def _download_streams(self, client: httpx.AsyncClient, activity_id: str) -> pl.DataFrame:
+    async def _download_streams(self, client: httpx.AsyncClient, start_time: datetime, activity_id: str) -> pl.DataFrame:
         response = await client.get(
             url=f"{self._base_url}/activities/{activity_id}/streams?keys=time,distance,latlng,altitude,heartrate&key_by_type=true")
         

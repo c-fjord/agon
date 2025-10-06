@@ -2,7 +2,7 @@ from datetime import datetime, time
 from typing import Optional
 from enum import StrEnum, auto
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 
@@ -53,7 +53,7 @@ class User(BaseModel):
 
 
 class ActivityMetadata(BaseModel):
-    id: int
+    id: int = Field(default=0)
     name: str
     distance: float
     moving_time: time
