@@ -1,9 +1,11 @@
 from datetime import datetime, time
-from typing import Optional
 from enum import StrEnum, auto
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PlainSerializer
+from models.utils import time_to_seconds
 
+Duration = Annotated[time, PlainSerializer(time_to_seconds)]
 
 
 class ActivityType(StrEnum):
@@ -11,6 +13,7 @@ class ActivityType(StrEnum):
     CYCLING = auto()
     ELLIPTICAL = auto()
     WORKOUT = auto()
+
 
 def strava_activity_type(activity_type: str) -> ActivityType:
     match activity_type.lower():
@@ -27,11 +30,11 @@ def strava_activity_type(activity_type: str) -> ActivityType:
         case "workout":
             return ActivityType.WORKOUT
 
+
 class Sex(StrEnum):
     MALE = auto()
-    FEMAL = auto()
+    FEMALE = auto()
     OTHER = auto()
-
 
 
 class User(BaseModel):
@@ -56,8 +59,8 @@ class ActivityMetadata(BaseModel):
     id: int = Field(default=0)
     name: str
     distance: float
-    moving_time: time
-    elapsed_time: time
+    moving_time: Duration
+    elapsed_time: Duration
     type: ActivityType
     start_date: datetime
 

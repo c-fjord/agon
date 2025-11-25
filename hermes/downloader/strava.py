@@ -1,4 +1,3 @@
-
 from datetime import datetime
 import json
 from typing import AsyncGenerator
@@ -16,7 +15,7 @@ class StravaAuth(httpx.Auth):
         self.client_id = client_id
         self.client_secret = client_secret
         self.refresh_token = refresh_token
-        
+
         self._access_token: str | None = None
         self._refresh_url = "https://www.strava.com/oauth/token"
 
@@ -63,15 +62,16 @@ class StravaAuth(httpx.Auth):
             request.headers["Authorization"] = self._access_token
             yield request
 
+
 class StravaDownloader:
     def __init__(self, auth: StravaAuth) -> None:
         self.auth = auth
         self._base_url = "https://www.strava.com/api/v3"
-        
+
     async def list_activities(self, client: httpx.AsyncClient, last_end_date: datetime | None = None) -> AsyncGenerator:
         if last_end_date is None:
             start_date = datetime(2000, 1, 1).timestamp()
-        else: 
+        else:
             start_date = last_end_date.timestamp()
 
         while start_date < datetime.now().timestamp():
@@ -91,7 +91,6 @@ class StravaDownloader:
 
     def _extract_activity_metadata(self, activity: dict) -> ActivityMetadata:
         return ActivityMetadata(
-            id=activity["id"],
             name=activity["name"],
             distance=activity["distance"],
             moving_time=activity["moving_time"],
@@ -100,40 +99,47 @@ class StravaDownloader:
             start_date=activity["start_date"],
         )
 
-    # TODO: Anonymous downloads of GPX files of publich activities is not longer supported. 
-    # Needs to be logging in. 
+    # TODO: Anonymous downloads of GPX files of publich activities is not longer supported.
+    # Needs to be logging in.
     # async def _download_gpx_file(self, client: httpx.AsyncClient, activity_id: int) -> bytes | None:
     #     response = await client.get(self._download_url.format(activity_id=activity_id))
-    #     response.raise_for_status()            
+    #     response.raise_for_status()
     #     return response.content
 
-    async def _download_streams(self, client: httpx.AsyncClient, start_time: datetime, activity_id: str) -> pl.DataFrame:
+    async def _download_streams(self, client: httpx.AsyncClient, activity_id: str) -> pl.DataFrame:
         response = await client.get(
-            url=f"{self._base_url}/activities/{activity_id}/streams?keys=time,distance,latlng,altitude,heartrate&key_by_type=true")
-        
+            url=f"{self._base_url}/activities/{activity_id}/streams?keys=time,distance,latlng,altitude,heartrate&key_by_type=true"
+        )
+
         response.raise_for_status()
         payload = response.json()
 
+        cols_from_source = ["time", "latlng", "altitude", "distance", "heartrate"]
+
         data = {}
-        for key in ["time", "latlng", "altitude", "distance", "heartrate"]:
+        for key in cols_from_source:
             if key in payload:
                 data[key] = payload[key]["data"]
 
         df = pl.from_dict(data)
 
         if "latlng" in payload:
-            df = df.with_columns([
-                pl.col("latlng").list.get(0).alias("latitude"),
-                pl.col("latlng").list.get(1).alias("longitude")
-            ]).drop("latlng")
+            df = df.with_columns(
+                [pl.col("latlng").list.get(0).alias("latitude"), pl.col("latlng").list.get(1).alias("longitude")]
+            ).drop("latlng")
 
+        missing_cols = []
+        for name in {"time", "latitude", "longitude", "altitude", "distance", "heartrate"} - set(df.columns):
+            missing_cols.append(pl.lit(None).alias(name))
+
+        df = df.with_columns(missing_cols)
         return df
 
-    async def download(self, last_end_date: datetime | None = None):
+    async def download(
+        self, last_end_date: datetime | None = None
+    ) -> AsyncGenerator[tuple[ActivityMetadata, pl.DataFrame]]:
         async with httpx.AsyncClient(auth=self.auth) as client:
             async for activity in self.list_activities(client, last_end_date):
                 activity_metadata = self._extract_activity_metadata(activity)
                 streams = await self._download_streams(client, activity["id"])
                 yield activity_metadata, streams
-
-    

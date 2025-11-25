@@ -1,10 +1,5 @@
-from models.activities import Sex
+from datetime import time
 
 
-def sex_translator(sex: str) -> Sex:
-    if sex.lower() == "male":
-        return Sex.MALE
-    elif sex.lower() == "femal":
-        return Sex.FEMAL
-    else:
-        return Sex.OTHER
+def time_to_seconds(t: time) -> float:
+    return t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1_000_000

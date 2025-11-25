@@ -3,8 +3,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 
+import polars as pl
 from downloader.strava import StravaDownloader, StravaAuth
-from repository.storage import TimescaleDB
+from repository.database import PostgresDBConnection
+from repository.storage import ActivityDataRepository, ActivityMetadataRepository
 
 
 async def main():
@@ -15,10 +17,16 @@ async def main():
     )
 
     downloader = StravaDownloader(auth=client_secret)
-    storage = TimescaleDB(os.getenv("CONNECTION_STRING"))
 
-    async for metadata, data in downloader.download(datetime(2025, 5, 1)):
-        print(metadata, data)
+    postgres_db = PostgresDBConnection(os.getenv("TIMESCALE_CONN_STR"))
+
+    activity_repo = ActivityDataRepository(postgres_db)
+    metadata_repo = ActivityMetadataRepository(postgres_db)
+
+    async for metadata, df in downloader.download(datetime(2025, 5, 1)):
+        entry_id, *_ = await metadata_repo.insert(metadata)
+        df = df.with_columns(pl.lit(entry_id).alias("activity_id"))
+        await activity_repo.insert(df)
 
 
 if __name__ == "__main__":
